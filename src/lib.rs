@@ -1,5 +1,6 @@
 //! A library that provides simple types and traits for representing pitch, where the octave is divided into twelve equally tempered parts
 use std::collections::HashSet;
+use std::fmt::Display;
 use std::iter::FromIterator;
 use std::ops::{Add, Rem, Sub};
 
@@ -54,6 +55,29 @@ impl Pitch {
     }
 }
 
+impl Display for Pitch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let note = match self.pitch_class {
+            0 => format!("{}{}", "C", self.octave),
+            1 => format!("{}{}", "C#/Db", self.octave),
+            2 => format!("{}{}", "D", self.octave),
+            3 => format!("{}{}", "D#/Eb", self.octave),
+            4 => format!("{}{}", "E", self.octave),
+            5 => format!("{}{}", "F", self.octave),
+            6 => format!("{}{}", "F#/Gb", self.octave),
+            7 => format!("{}{}", "G", self.octave),
+            8 => format!("{}{}", "G#/Ab", self.octave),
+            9 => format!("{}{}", "A", self.octave),
+            10 => format!("{}{}", "A#/Bb", self.octave),
+            _ => format!("{}{}", "B", self.octave),
+        };
+        write!(
+            f,
+            "{} {:4}, pitch_class: {}",
+            note, self.frequency, self.pitch_class
+        )
+    }
+}
 /// A trait for performing mod 12 arithmetic. Useful for comparing pitch classes when pitch classes are represented as integers modulo 12.
 pub trait PitchClassArithmetic<T>
 where
@@ -120,7 +144,7 @@ pub struct SATB {
     /// Bass voice,
     pub bass: Pitch,
     /// The root of the harmony
-    root: Pitch,
+    root: u8,
     /// Collection of all possible pitch classes
     pitch_classes: HashSet<u8>,
 }
@@ -138,7 +162,9 @@ impl SATB {
                 return false;
             } else if bass.octave == 4 && bass.pitch_class > 0 {
                 return false;
-            } else if bass.octave.abs_diff(tenor.octave) == 1 && bass.octave.dist(&tenor.octave) > 7
+            } else if (bass.octave.abs_diff(tenor.octave) == 1
+                && bass.octave.dist(&tenor.octave) > 7)
+                || (bass.octave.abs_diff(tenor.octave) == 0 && bass.pitch_class > tenor.pitch_class)
             {
                 return false;
             }
@@ -152,8 +178,9 @@ impl SATB {
                 return false;
             } else if tenor.octave == 4 && tenor.pitch_class > 6 {
                 return false;
-            } else if tenor.octave.abs_diff(alto.octave) == 1
-                && tenor.pitch_class != alto.pitch_class
+            } else if (tenor.octave.abs_diff(alto.octave) == 1
+                && tenor.pitch_class != alto.pitch_class)
+                || (tenor.octave.abs_diff(alto.octave) == 0 && tenor.pitch_class > alto.pitch_class)
             {
                 return false;
             }
@@ -167,8 +194,10 @@ impl SATB {
                 return false;
             } else if alto.octave == 5 && alto.pitch_class > 1 {
                 return false;
-            } else if alto.octave.abs_diff(soprano.octave) == 1
-                && alto.pitch_class != soprano.pitch_class
+            } else if (alto.octave.abs_diff(soprano.octave) == 1
+                && alto.pitch_class != soprano.pitch_class)
+                || (alto.octave.abs_diff(soprano.octave) == 0
+                    && alto.pitch_class > soprano.pitch_class)
             {
                 return false;
             }
@@ -187,7 +216,8 @@ impl SATB {
 
         true
     }
-    /// Private helper method to validate a given harmony
+
+    /// Associated helper  method to validate a given harmony, each voice is represented as a `Pitch`.
     fn validate_harmony(
         root: u8,
         soprano: &Pitch,
@@ -238,11 +268,13 @@ impl SATB {
                 && (bass.pitch_class == root || root.is_third(&bass.pitch_class)))
             {
                 return false;
+            } else {
+                return true;
             }
         } else if distinct_voices == 3 {
             // We have a triad in this case, check that the voicing is valid for its inversion
             if bass.pitch_class == root {
-                return ((tenor.pitch_class == root
+                return (tenor.pitch_class == root
                     && ((root.is_third(&alto.pitch_class)
                         && root.is_fifth(&soprano.pitch_class))
                         || (root.is_third(&soprano.pitch_class)
@@ -256,13 +288,61 @@ impl SATB {
                         && ((root.is_third(&tenor.pitch_class)
                             && root.is_fifth(&alto.pitch_class))
                             || (root.is_third(&alto.pitch_class)
-                                && root.is_fifth(&tenor.pitch_class)))));
+                                && root.is_fifth(&tenor.pitch_class))));
             } else if root.is_third(&bass.pitch_class) {
+                // Check if we have a diminished triad of some kind
+                if (root.is_fifth(&soprano.pitch_class) && root.dist(&soprano.pitch_class) == 6)
+                    || (root.is_fifth(&alto.pitch_class) && root.dist(&alto.pitch_class) == 6)
+                    || (root.is_fifth(&tenor.pitch_class) && root.dist(&tenor.pitch_class) == 6)
+                {
+                    // Validate that atleast one voice is the third, i.e that the bass is doubled
+                    return root.is_third(&soprano.pitch_class)
+                        || root.is_third(&alto.pitch_class)
+                        || root.is_third(&tenor.pitch_class);
+                } else {
+                    // Validate that the bass is not doubled in this case, that one voice is the root and other two are fifths
+                    // or two voices are the root and one voice is the fifth
+                    return (!root.is_third(&soprano.pitch_class)
+                        && !root.is_third(&alto.pitch_class)
+                        && !root.is_third(&tenor.pitch_class))
+                        && ((root.is_fifth(&soprano.pitch_class)
+                            || root.is_fifth(&alto.pitch_class)
+                            || root.is_fifth(&tenor.pitch_class))
+                            && (root == soprano.pitch_class
+                                || root == alto.pitch_class
+                                || root == tenor.pitch_class));
+                }
             } else if root.is_fifth(&bass.pitch_class) {
+                // Ensure that atleast one other voice is the bass
+                return (root.is_fifth(&soprano.pitch_class)
+                    || root.is_fifth(&alto.pitch_class)
+                    || root.is_fifth(&tenor.pitch_class))
+                    && ((root.is_third(&soprano.pitch_class)
+                        || root.is_third(&alto.pitch_class)
+                        || root.is_third(&tenor.pitch_class))
+                        && (root == soprano.pitch_class
+                            || root == alto.pitch_class
+                            || root == tenor.pitch_class));
             } else {
                 return false;
             }
         } else if distinct_voices == 4 {
+            return (root == bass.pitch_class
+                || root == tenor.pitch_class
+                || root == alto.pitch_class
+                || root == soprano.pitch_class)
+                && (root.is_third(&bass.pitch_class)
+                    || root.is_third(&tenor.pitch_class)
+                    || root.is_third(&alto.pitch_class)
+                    || root.is_third(&soprano.pitch_class))
+                && (root.is_fifth(&bass.pitch_class)
+                    || root.is_fifth(&tenor.pitch_class)
+                    || root.is_fifth(&alto.pitch_class)
+                    || root.is_fifth(&soprano.pitch_class))
+                && (root.is_seventh(&bass.pitch_class)
+                    || root.is_seventh(&tenor.pitch_class)
+                    || root.is_seventh(&alto.pitch_class)
+                    || root.is_seventh(&soprano.pitch_class));
         } else {
             return false;
         }
@@ -274,18 +354,18 @@ impl SATB {
     /// If the supplied pitches do not form a valid satb harmony, i.e. there is no third or
     /// there is a pitch that is not contained within a valid satb harmony with the supplied `root`.
     pub fn new(root: u8, soprano: Pitch, alto: Pitch, tenor: Pitch, bass: Pitch) -> Self {
-        SATB::validate_harmony(
-            root.pitch_class,
-            soprano.pitch_class,
-            alto.pitch_class,
-            tenor.pitch_class,
-            bass.pitch_class,
-        );
+        if !SATB::validate_harmony(root, &soprano, &alto, &tenor, &bass) {
+            panic!(
+                "invalid harmony created with voices S: {}, A: {}, T: {}, B: {}",
+                soprano, alto, tenor, bass
+            );
+        }
         let mut pitch_classes = HashSet::new();
         pitch_classes.insert(soprano.pitch_class);
         pitch_classes.insert(alto.pitch_class);
         pitch_classes.insert(tenor.pitch_class);
         pitch_classes.insert(bass.pitch_class);
+
         SATB {
             soprano,
             alto,
@@ -294,6 +374,188 @@ impl SATB {
             root,
             pitch_classes,
         }
+    }
+}
+
+impl Harmony for SATB {
+    fn one_period_frequency(&self) -> f64 {}
+}
+
+/// A function for validating potential harmonies before being created, checks to ensure each voice is within a proper range.
+/// Each voice is represented as a tuple of `u8`s i.e (pitch_class, octave).
+/// Returns true if the given voices are all contained within their appropraite ranges, false otherwise.
+pub fn validate_voice_ranges(
+    soprano: (u8, u8),
+    alto: (u8, u8),
+    tenor: (u8, u8),
+    bass: (u8, u8),
+) -> bool {
+    // Check the bass
+    if bass.1 < 2 || bass.1 > 4 {
+        return false;
+    } else {
+        // Check basses end points
+        if bass.1 == 2 && bass.0 < 4 {
+            return false;
+        } else if bass.1 == 4 && bass.0 > 0 {
+            return false;
+        } else if (bass.1.abs_diff(tenor.1) == 1 && bass.0.dist(&tenor.0) > 7)
+            || (bass.1.abs_diff(tenor.1) == 0 && bass.0 > tenor.0)
+        {
+            return false;
+        }
+    }
+    // Check the tenor
+    if tenor.1 < 3 || tenor.1 > 4 {
+        return false;
+    } else {
+        // Check the end points
+        if tenor.1 == 3 && tenor.0 < 3 {
+            return false;
+        } else if tenor.1 == 4 && tenor.0 > 6 {
+            return false;
+        } else if (tenor.1.abs_diff(alto.1) == 1 && tenor.0 != alto.0)
+            || (tenor.1.abs_diff(alto.1) == 0 && tenor.0 > alto.0)
+        {
+            return false;
+        }
+    }
+    // Check alto
+    if alto.1 < 3 || alto.1 > 5 {
+        return false;
+    } else {
+        // Check the end points of the alot voice
+        if alto.1 == 3 && alto.0 < 7 {
+            return false;
+        } else if alto.1 == 5 && alto.0 > 1 {
+            return false;
+        } else if (alto.1.abs_diff(soprano.1) == 1 && alto.0 != soprano.0)
+            || (alto.1.abs_diff(soprano.1) == 0 && alto.0 > soprano.0)
+        {
+            return false;
+        }
+    }
+    // Check soprano
+    if soprano.1 < 4 || soprano.1 > 5 {
+        return false;
+    } else {
+        // Check the end points of the valid range
+        if soprano.1 == 4 && soprano.0 < 2 {
+            return false;
+        } else if soprano.1 == 5 && soprano.0 > 6 {
+            return false;
+        }
+    }
+
+    true
+}
+
+/// A function for determining whether or not that the given tuples of (pitch_class, octave) form a valid SATB harmony in classical voice leading.
+/// Returns true if `soprano`, `alto`, `tenor` and `bass` form a valid harmony determined by the rulest of 4 part harmony in classical voice leading,
+/// false otherwise.
+fn validate_harmony(
+    root: u8,
+    soprano: (u8, u8),
+    alto: (u8, u8),
+    tenor: (u8, u8),
+    bass: (u8, u8),
+) -> bool {
+    // Validate the range for each voice
+    if !validate_voice_ranges(soprano, alto, tenor, bass) {
+        return false;
+    }
+    // Ensure that atleast one voice is the root of the harmony
+    if !(soprano.0 == root || alto.0 == root || tenor.0 == root || bass.0 == root) {
+        return false;
+    }
+    // Count the number of distinct voices
+    let mut distinct_voices = 1;
+    if bass.0 != root {
+        distinct_voices += 1;
+    }
+    if tenor.0 != root && tenor.0 != bass.0 {
+        distinct_voices += 1;
+    }
+    if alto.0 != root && alto.0 != tenor.0 && alto.0 != bass.0 {
+        distinct_voices += 1;
+    }
+    if soprano.0 != root && soprano.0 != alto.0 && soprano.0 != tenor.0 && soprano.0 != bass.0 {
+        distinct_voices += 1;
+    }
+
+    // Ensure we have either 2, 3 or 4 distinct voices, all other cases are invalid harmonies.
+    // The case where we have two distinc voices, all voices need to be either the root or the third only.
+    if distinct_voices == 2 {
+        if !((soprano.0 == root || root.is_third(&soprano.0))
+            && (alto.0 == root || root.is_third(&alto.0))
+            && (tenor.0 == root || root.is_third(&tenor.0))
+            && (bass.0 == root || root.is_third(&bass.0)))
+        {
+            return false;
+        } else {
+            return true;
+        }
+    } else if distinct_voices == 3 {
+        // We have a triad in this case, check that the voicing is valid for its inversion
+        if bass.0 == root {
+            return (tenor.0 == root
+                && ((root.is_third(&alto.0) && root.is_fifth(&soprano.0))
+                    || (root.is_third(&soprano.0) && root.is_fifth(&alto.0))))
+                || (alto.0 == root
+                    && ((root.is_third(&tenor.0) && root.is_fifth(&soprano.0))
+                        || (root.is_third(&soprano.0) && root.is_fifth(&tenor.0))))
+                || (soprano.0 == root
+                    && ((root.is_third(&tenor.0) && root.is_fifth(&alto.0))
+                        || (root.is_third(&alto.0) && root.is_fifth(&tenor.0))));
+        } else if root.is_third(&bass.0) {
+            // Check if we have a diminished triad of some kind
+            if (root.is_fifth(&soprano.0) && root.dist(&soprano.0) == 6)
+                || (root.is_fifth(&alto.0) && root.dist(&alto.0) == 6)
+                || (root.is_fifth(&tenor.0) && root.dist(&tenor.0) == 6)
+            {
+                // Validate that atleast one voice is the third, i.e that the bass is doubled
+                return root.is_third(&soprano.0)
+                    || root.is_third(&alto.0)
+                    || root.is_third(&tenor.0);
+            } else {
+                // Validate that the bass is not doubled in this case, that one voice is the root and other two are fifths
+                // or two voices are the root and one voice is the fifth
+                return (!root.is_third(&soprano.0)
+                    && !root.is_third(&alto.0)
+                    && !root.is_third(&tenor.0))
+                    && ((root.is_fifth(&soprano.0)
+                        || root.is_fifth(&alto.0)
+                        || root.is_fifth(&tenor.0))
+                        && (root == soprano.0 || root == alto.0 || root == tenor.0));
+            }
+        } else if root.is_fifth(&bass.0) {
+            // Ensure that atleast one other voice is the bass
+            return (root.is_fifth(&soprano.0)
+                || root.is_fifth(&alto.0)
+                || root.is_fifth(&tenor.0))
+                && ((root.is_third(&soprano.0)
+                    || root.is_third(&alto.0)
+                    || root.is_third(&tenor.0))
+                    && (root == soprano.0 || root == alto.0 || root == tenor.0));
+        } else {
+            return false;
+        }
+    } else if distinct_voices == 4 {
+        return (root == bass.0 || root == tenor.0 || root == alto.0 || root == soprano.0)
+            && (root.is_third(&bass.0)
+                || root.is_third(&tenor.0)
+                || root.is_third(&alto.0)
+                || root.is_third(&soprano.0))
+            && (root.is_fifth(&bass.0)
+                || root.is_fifth(&tenor.0)
+                || root.is_fifth(&alto.0)
+                || root.is_fifth(&soprano.0))
+            && (root.is_seventh(&bass.0)
+                || root.is_seventh(&tenor.0)
+                || root.is_seventh(&alto.0)
+                || root.is_seventh(&soprano.0));
+    } else {
+        return false;
     }
 }
 

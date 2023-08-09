@@ -390,7 +390,7 @@ impl Harmony for SATB {
     fn sound_wave(&self, duration: u32, sample_freq: u32) -> Vec<f64> {
         let mut wave = Vec::new();
         for _ in 0..duration {
-            for t in 0..sample_freq {
+            for t in (0..sample_freq).map(|x| (x as f64) / (sample_freq as f64)) {
                 wave.push(
                     f64::sin(self.soprano.frequency * 2.0 * PI * (t as f64))
                         + f64::sin(self.alto.frequency * 2.0 * PI * (t as f64))

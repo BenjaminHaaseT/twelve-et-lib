@@ -128,8 +128,10 @@ impl PitchClassArithmetic<u8> for u8 {
 
 /// A trait that all harmonies, implement.
 pub trait Harmony {
-    /// Required method, each `Harmony` must implement a method to return a full period representing its sound wave.
-    fn one_period_frequency(&self) -> f64;
+    /// Required method, each `Harmony` must implement a method to return duration of a sound wave.
+    /// `duration` represents the time in seconds of the requested harmony, `sample_freq` represents the rate at which the
+    /// sound wave is sampled.
+    fn sound_wave(&self, duration: u32, sample_freq: u32) -> Vec<f64>;
 }
 
 /// A struct that represents a traditional harmony comprised of alto, soprano, tenor and bass voices. In short it represents a harmony
@@ -348,7 +350,7 @@ impl SATB {
         }
     }
 
-    /// Associated method for creating new `SATB` harmonies.
+    /// Associated method for creating a new `SATB` harmony.
     ///
     /// `Panics`
     /// If the supplied pitches do not form a valid satb harmony, i.e. there is no third or
@@ -360,6 +362,11 @@ impl SATB {
                 soprano, alto, tenor, bass
             );
         }
+        SATB::new_unchecked(root, soprano, alto, tenor, bass)
+    }
+
+    /// Associated method for creating a new `SATB` harmony, without the checks for validity.
+    pub fn new_unchecked(root: u8, soprano: Pitch, alto: Pitch, tenor: Pitch, bass: Pitch) -> Self {
         let mut pitch_classes = HashSet::new();
         pitch_classes.insert(soprano.pitch_class);
         pitch_classes.insert(alto.pitch_class);
@@ -377,8 +384,23 @@ impl SATB {
     }
 }
 
+use std::f64::consts::PI;
+
 impl Harmony for SATB {
-    fn one_period_frequency(&self) -> f64 {}
+    fn sound_wave(&self, duration: u32, sample_freq: u32) -> Vec<f64> {
+        let mut wave = Vec::new();
+        for _ in 0..duration {
+            for t in 0..sample_freq {
+                wave.push(
+                    f64::sin(self.soprano.frequency * 2.0 * PI * (t as f64))
+                        + f64::sin(self.alto.frequency * 2.0 * PI * (t as f64))
+                        + f64::sin(self.tenor.frequency * 2.0 * PI * (t as f64))
+                        + f64::sin(self.bass.frequency * 2.0 * PI * (t as f64)),
+                );
+            }
+        }
+        wave
+    }
 }
 
 /// A function for validating potential harmonies before being created, checks to ensure each voice is within a proper range.

@@ -4,6 +4,10 @@ use std::fmt::Display;
 use std::iter::FromIterator;
 use std::ops::{Add, Rem, Sub};
 
+pub mod prelude {
+    use super::*;
+}
+
 pub const A_440_FREQUENCY: f64 = 440.0;
 pub const A_440_OCTAVE: u8 = 4;
 pub const A_440_HALFSTEPS_FROM_0: u32 = 45;
@@ -171,6 +175,7 @@ impl SATB {
                 return false;
             }
         }
+        println!("Bass range validated");
         // Check the tenor
         if tenor.octave < 3 || tenor.octave > 4 {
             return false;
@@ -180,13 +185,13 @@ impl SATB {
                 return false;
             } else if tenor.octave == 4 && tenor.pitch_class > 6 {
                 return false;
-            } else if (tenor.octave.abs_diff(alto.octave) == 1
-                && tenor.pitch_class != alto.pitch_class)
+            } else if tenor.octave.abs_diff(alto.octave) > 1
                 || (tenor.octave.abs_diff(alto.octave) == 0 && tenor.pitch_class > alto.pitch_class)
             {
                 return false;
             }
         }
+        println!("Tenor range validated");
         // Check alto
         if alto.octave < 3 || alto.octave > 5 {
             return false;
@@ -196,14 +201,14 @@ impl SATB {
                 return false;
             } else if alto.octave == 5 && alto.pitch_class > 1 {
                 return false;
-            } else if (alto.octave.abs_diff(soprano.octave) == 1
-                && alto.pitch_class != soprano.pitch_class)
+            } else if alto.octave.abs_diff(soprano.octave) > 1
                 || (alto.octave.abs_diff(soprano.octave) == 0
                     && alto.pitch_class > soprano.pitch_class)
             {
                 return false;
             }
         }
+        println!("Alto range validated");
         // Check soprano
         if soprano.octave < 4 || soprano.octave > 5 {
             return false;
@@ -215,7 +220,7 @@ impl SATB {
                 return false;
             }
         }
-
+        println!("ranges validated successfully");
         true
     }
 

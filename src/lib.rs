@@ -2,16 +2,29 @@
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::iter::FromIterator;
+use std::ops::Range;
 use std::ops::{Add, Rem, Sub};
 
 pub mod prelude {
-    use super::*;
+    pub use super::*;
 }
 
 pub const A_440_FREQUENCY: f64 = 440.0;
 pub const A_440_OCTAVE: u8 = 4;
 pub const A_440_HALFSTEPS_FROM_0: u32 = 45;
 pub const SEMITONE_FREQUENCY_RATIO: f64 = 1.059463094;
+pub const BASS_VOICE_OCTAVE_RANGE: Range<u8> = 2..5;
+pub const BASS_VOICE_PITCH_CLASS_LOWER_BOUND: u8 = 4;
+pub const BASS_VOICE_PITCH_CLASS_UPPER_BOUND: u8 = 0;
+pub const TENOR_VOICE_OCTAVE_RANGE: Range<u8> = 3..5;
+pub const TENOR_VOICE_PITCH_CLASS_LOWER_BOUND: u8 = 3;
+pub const TENOR_VOICE_PITCH_CLASS_UPPER_BOUND: u8 = 6;
+pub const ALTO_VOICE_OCTAVE_RANGE: Range<u8> = 3..6;
+pub const ALTO_VOICE_PITCH_CLASS_LOWER_BOUND: u8 = 7;
+pub const ALTO_VOICE_PITCH_CLASS_UPPER_BOUND: u8 = 1;
+pub const SOPRANO_VOICE_OCTAVE_RANGE: Range<u8> = 4..6;
+pub const SOPRANO_VOICE_PITCH_CLASS_LOWER_BOUND: u8 = 2;
+pub const SOPRANO_VOICE_PITCH_CLASS_UPPER_BOUND: u8 = 6;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Pitch {
@@ -175,7 +188,6 @@ impl SATB {
                 return false;
             }
         }
-        println!("Bass range validated");
         // Check the tenor
         if tenor.octave < 3 || tenor.octave > 4 {
             return false;
@@ -191,7 +203,6 @@ impl SATB {
                 return false;
             }
         }
-        println!("Tenor range validated");
         // Check alto
         if alto.octave < 3 || alto.octave > 5 {
             return false;
@@ -208,7 +219,6 @@ impl SATB {
                 return false;
             }
         }
-        println!("Alto range validated");
         // Check soprano
         if soprano.octave < 4 || soprano.octave > 5 {
             return false;
@@ -220,7 +230,6 @@ impl SATB {
                 return false;
             }
         }
-        println!("ranges validated successfully");
         true
     }
 

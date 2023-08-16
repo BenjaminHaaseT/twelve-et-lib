@@ -197,7 +197,10 @@ impl SATB {
                 return false;
             } else if tenor.octave == 4 && tenor.pitch_class > 6 {
                 return false;
-            } else if tenor.octave.abs_diff(alto.octave) > 1
+            } else if compute_semi_tone_dist(
+                (tenor.pitch_class, tenor.octave),
+                (alto.pitch_class, alto.octave),
+            ) > 12
                 || (tenor.octave.abs_diff(alto.octave) == 0 && tenor.pitch_class > alto.pitch_class)
             {
                 return false;
@@ -212,7 +215,10 @@ impl SATB {
                 return false;
             } else if alto.octave == 5 && alto.pitch_class > 1 {
                 return false;
-            } else if alto.octave.abs_diff(soprano.octave) > 1
+            } else if compute_semi_tone_dist(
+                (alto.pitch_class, alto.octave),
+                (soprano.pitch_class, soprano.octave),
+            ) > 12
                 || (alto.octave.abs_diff(soprano.octave) == 0
                     && alto.pitch_class > soprano.pitch_class)
             {
@@ -414,6 +420,22 @@ impl Harmony for SATB {
             }
         }
         wave
+    }
+}
+
+/// A function that will take two tuples of `u8` that represent different pitches i.e. pitch class and octave and compute the number of semitones between them.
+/// Note that it computes the absolute difference in semitones.
+fn compute_semi_tone_dist(pitch1: (u8, u8), pitch2: (u8, u8)) -> u32 {
+    if pitch1.1 == pitch2.1 {
+        return u8::min(pitch1.0.dist(&pitch2.0), pitch2.0.dist(&pitch1.0)) as u32;
+    } else {
+        let (high, low) = if pitch1.1 > pitch2.1 {
+            (pitch1, pitch2)
+        } else {
+            (pitch2, pitch1)
+        };
+        let oct_diff = high.1 - low.1 - 1;
+        return (high.0 + low.0 + (12 * oct_diff)) as u32;
     }
 }
 

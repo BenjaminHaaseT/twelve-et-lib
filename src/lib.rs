@@ -425,17 +425,24 @@ impl Harmony for SATB {
 
 /// A function that will take two tuples of `u8` that represent different pitches i.e. pitch class and octave and compute the number of semitones between them.
 /// Note that it computes the absolute difference in semitones.
-fn compute_semi_tone_dist(pitch1: (u8, u8), pitch2: (u8, u8)) -> u32 {
+pub fn compute_semi_tone_dist(pitch1: (u8, u8), pitch2: (u8, u8)) -> u32 {
     if pitch1.1 == pitch2.1 {
-        return u8::min(pitch1.0.dist(&pitch2.0), pitch2.0.dist(&pitch1.0)) as u32;
+        let (high, low) = if pitch1.0 > pitch2.0 {
+            (pitch1, pitch2)
+        } else {
+            (pitch2, pitch1)
+        };
+        return low.0.dist(&high.0) as u32;
     } else {
         let (high, low) = if pitch1.1 > pitch2.1 {
             (pitch1, pitch2)
         } else {
             (pitch2, pitch1)
         };
-        let oct_diff = high.1 - low.1 - 1;
-        return (high.0 + low.0 + (12 * oct_diff)) as u32;
+        // convert to semitones
+        let high_semi_tones = 12 * (high.1 as u32) + (high.0 as u32);
+        let low_semi_tones = 12 * (low.1 as u32) + (low.0 as u32);
+        return high_semi_tones - low_semi_tones;
     }
 }
 
@@ -649,5 +656,20 @@ mod test {
         println!("{}", middle_c);
         println!("{}", f64::abs(middle_c - 261.625580_f64));
         assert!(f64::abs(middle_c - 261.625580_f64) < 0.0001_f64);
+    }
+
+    #[test]
+    fn test_compute_semi_tone_dist() {
+        let dist = compute_semi_tone_dist((4, 3), (7, 4));
+        println!("{:?}", dist);
+        assert_eq!(dist, 15);
+
+        let dist = compute_semi_tone_dist((4, 4), (7, 4));
+        println!("{:?}", dist);
+        assert_eq!(dist, 3);
+
+        let dist = compute_semi_tone_dist((4, 4), (0, 5));
+        println!("{:?}", dist);
+        assert_eq!(dist, 8);
     }
 }

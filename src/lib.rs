@@ -446,6 +446,13 @@ pub fn compute_semi_tone_dist(pitch1: (u8, u8), pitch2: (u8, u8)) -> u32 {
     }
 }
 
+/// A function that will compute the signed semitone distance between `pitch1` and `pitch2`, where `pitch1` and `pitch2` are tuples of `u8`.
+fn compute_semi_tone_dist_signed(pitch1: (u8, u8), pitch2: (u8, u8)) -> i32 {
+    let pitch1_semitones = 12 * (pitch1.1 as i32) + (pitch1.0 as i32);
+    let pitch2_semitones = 12 * (pitch2.1 as i32) + (pitch2.0 as i32);
+    pitch1_semitones - pitch2_semitones
+}
+
 /// A function for validating potential harmonies before being created, checks to ensure each voice is within a proper range.
 /// Each voice is represented as a tuple of `u8`s i.e (pitch_class, octave).
 /// Returns true if the given voices are all contained within their appropraite ranges, false otherwise.

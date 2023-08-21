@@ -115,7 +115,7 @@ where
 
 // Implement for `u8`.
 impl PitchClassArithmetic<u8> for u8 {
-    /// Compute the distance between `self` and `other` modulo 12.
+    /// Compute the distance from `self` to `other` modulo 12.
     fn dist(&self, other: &Self) -> Self {
         if self > other {
             (other + (12 - self)) % 12
@@ -447,7 +447,7 @@ pub fn compute_semi_tone_dist(pitch1: (u8, u8), pitch2: (u8, u8)) -> u32 {
 }
 
 /// A function that will compute the signed semitone distance between `pitch1` and `pitch2`, where `pitch1` and `pitch2` are tuples of `u8`.
-fn compute_semi_tone_dist_signed(pitch1: (u8, u8), pitch2: (u8, u8)) -> i32 {
+pub fn compute_semi_tone_dist_signed(pitch1: (u8, u8), pitch2: (u8, u8)) -> i32 {
     let pitch1_semitones = 12 * (pitch1.1 as i32) + (pitch1.0 as i32);
     let pitch2_semitones = 12 * (pitch2.1 as i32) + (pitch2.0 as i32);
     pitch1_semitones - pitch2_semitones
@@ -525,7 +525,7 @@ pub fn validate_voice_ranges(
 /// A function for determining whether or not that the given tuples of (pitch_class, octave) form a valid SATB harmony in classical voice leading.
 /// Returns true if `soprano`, `alto`, `tenor` and `bass` form a valid harmony determined by the rulest of 4 part harmony in classical voice leading,
 /// false otherwise.
-fn validate_harmony(
+pub fn validate_harmony(
     root: u8,
     soprano: (u8, u8),
     alto: (u8, u8),

@@ -463,60 +463,40 @@ pub fn validate_voice_ranges(
     bass: (u8, u8),
 ) -> bool {
     // Check the bass
-    if bass.1 < 2 || bass.1 > 4 {
+    if (bass.1 < 2 || bass.1 > 4)
+        || (bass.1 == 2 && bass.0 < 4)
+        || (bass.1 == 4 && bass.0 > 0)
+        || (bass.1 == tenor.1 && bass.0 > tenor.0)
+        || (compute_semi_tone_dist(bass, tenor) > 19)
+
+    {
         return false;
-    } else {
-        // Check basses end points
-        if bass.1 == 2 && bass.0 < 4 {
-            return false;
-        } else if bass.1 == 4 && bass.0 > 0 {
-            return false;
-        } else if (bass.1.abs_diff(tenor.1) == 1 && bass.0.dist(&tenor.0) > 7)
-            || (bass.1.abs_diff(tenor.1) == 0 && bass.0 > tenor.0)
-        {
-            return false;
-        }
     }
     // Check the tenor
-    if tenor.1 < 3 || tenor.1 > 4 {
+    if (tenor.1 < 3 || tenor.1 > 4)
+        || (tenor.1 == 3 && tenor.0 < 3)
+        || (tenor.1 == 4 && tenor.0 > 6)
+        || (tenor.1 == alto.1 && tenor.0 > alto.0)
+        || (compute_semi_tone_dist(tenor, alto) > 12)
+    {
         return false;
-    } else {
-        // Check the end points
-        if tenor.1 == 3 && tenor.0 < 3 {
-            return false;
-        } else if tenor.1 == 4 && tenor.0 > 6 {
-            return false;
-        } else if (tenor.1.abs_diff(alto.1) == 1 && tenor.0 != alto.0)
-            || (tenor.1.abs_diff(alto.1) == 0 && tenor.0 > alto.0)
-        {
-            return false;
-        }
     }
     // Check alto
-    if alto.1 < 3 || alto.1 > 5 {
+    if (alto.1 < 3 || alto.1 > 5)
+        || (alto.1 == 3 && alto.0 < 7)
+        || (alto.1 == 5 && alto.0 > 1)
+        || (alto.1 == soprano.1 && alto.0 > soprano.0)
+        || (compute_semi_tone_dist(alto, soprano) > 12)
+    {
         return false;
-    } else {
-        // Check the end points of the alot voice
-        if alto.1 == 3 && alto.0 < 7 {
-            return false;
-        } else if alto.1 == 5 && alto.0 > 1 {
-            return false;
-        } else if (alto.1.abs_diff(soprano.1) == 1 && alto.0 != soprano.0)
-            || (alto.1.abs_diff(soprano.1) == 0 && alto.0 > soprano.0)
-        {
-            return false;
-        }
     }
+
     // Check soprano
-    if soprano.1 < 4 || soprano.1 > 5 {
+    if (soprano.1 < 4 || soprano.1 > 5)
+        || (soprano.1 == 4 && soprano.0 < 2)
+        || (soprano.1 == 5 && soprano.0 > 6)
+    {
         return false;
-    } else {
-        // Check the end points of the valid range
-        if soprano.1 == 4 && soprano.0 < 2 {
-            return false;
-        } else if soprano.1 == 5 && soprano.0 > 6 {
-            return false;
-        }
     }
 
     true
@@ -554,19 +534,10 @@ pub fn validate_harmony(
     if soprano.0 != root && soprano.0 != alto.0 && soprano.0 != tenor.0 && soprano.0 != bass.0 {
         distinct_voices += 1;
     }
-
     // Ensure we have either 2, 3 or 4 distinct voices, all other cases are invalid harmonies.
     // The case where we have two distinc voices, all voices need to be either the root or the third only.
-    if distinct_voices == 2 {
-        if !((soprano.0 == root || root.is_third(&soprano.0))
-            && (alto.0 == root || root.is_third(&alto.0))
-            && (tenor.0 == root || root.is_third(&tenor.0))
-            && (bass.0 == root || root.is_third(&bass.0)))
-        {
-            return false;
-        } else {
-            return true;
-        }
+    if distinct_voices < 3 {
+        return false;
     } else if distinct_voices == 3 {
         // We have a triad in this case, check that the voicing is valid for its inversion
         if bass.0 == root {
@@ -585,7 +556,7 @@ pub fn validate_harmony(
                 || (root.is_fifth(&alto.0) && root.dist(&alto.0) == 6)
                 || (root.is_fifth(&tenor.0) && root.dist(&tenor.0) == 6)
             {
-                // Validate that atleast one voice is the third, i.e that the bass is doubled
+                // Validate that at least one voice is the third, i.e that the bass is doubled
                 return root.is_third(&soprano.0)
                     || root.is_third(&alto.0)
                     || root.is_third(&tenor.0);
@@ -679,4 +650,12 @@ mod test {
         println!("{:?}", dist);
         assert_eq!(dist, 8);
     }
+
+    #[test]
+    fn test_is_valid_harmony() {
+        let result = validate_harmony(11, (2, 5), (5, 4), (11, 3), (2, 3));
+        println!("{}", result);
+        assert!(result);
+    }
+
 }

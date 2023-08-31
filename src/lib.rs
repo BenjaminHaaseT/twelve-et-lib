@@ -95,6 +95,15 @@ impl Display for Pitch {
         )
     }
 }
+
+impl From<(u8, u8)> for Pitch {
+    fn from(value: (u8, u8)) -> Self {
+        let (pitch_class, octave) = value;
+        let freq = Pitch::compute_frequency(pitch_class, octave);
+        Pitch::new(freq, pitch_class, octave)
+    }
+}
+
 /// A trait for performing mod 12 arithmetic. Useful for comparing pitch classes when pitch classes are represented as integers modulo 12.
 pub trait PitchClassArithmetic<T>
 where
